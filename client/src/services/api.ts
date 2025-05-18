@@ -111,9 +111,67 @@ export const reserveSeats = async (
   }
 };
 
+/**
+ * Confirm a reservation
+ */
+export const confirmReservation = async (orderId: string): Promise<{ success: boolean }> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/confirm`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error ${response.status}`);
+    }
+    
+    return { success: data.success };
+  } catch (error) {
+    console.error('Error confirming reservation:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update a reservation
+ */
+export const updateReservation = async (
+  orderId: string,
+  seatNumbers: number[]
+): Promise<{ success: boolean }> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        seatNumbers,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error ${response.status}`);
+    }
+    
+    return { success: data.success };
+  } catch (error) {
+    console.error('Error updating reservation:', error);
+    throw error;
+  }
+};
+
 export default {
   fetchScreenings,
   fetchScreeningById,
   fetchOccupiedSeats,
-  reserveSeats
+  reserveSeats,
+  confirmReservation,
+  updateReservation
 };

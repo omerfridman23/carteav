@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Order } from '../models/Order';
 import { Screening } from '../models/Screening';
+import socketService from '../services/socketService';
 
 /**
  * Order controller for handling order-related requests
@@ -74,9 +75,7 @@ const orderController = {
         expiresAt
       });
 
-      await order.save();
-
-      // Update seat status in the screening
+      await order.save();      // Update seat status in the screening
       await Screening.updateOne(
         { _id: screeningObjectId },
         {
@@ -91,6 +90,9 @@ const orderController = {
           multi: true
         }
       );
+
+      // Notify connected clients about the seat update
+      socketService.emitSeatsUpdated(screeningId);
 
       res.status(201).json({
         success: true,
@@ -173,9 +175,7 @@ const orderController = {
 
       // Update order status
       order.status = 'confirmed';
-      await order.save();
-
-      // Update seat status in the screening
+      await order.save();      // Update seat status in the screening
       await Screening.updateOne(
         { _id: order.screeningId },
         {
@@ -190,6 +190,9 @@ const orderController = {
         }
       );
 
+      // Notify connected clients about the seat update
+      socketService.emitSeatsUpdated(order.screeningId.toString());
+
       res.json({
         success: true,
         message: 'Order confirmed successfully',
@@ -203,7 +206,173 @@ const orderController = {
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-  }
+  },
+
+  /**
+   * Update an existing reservation with new seat selections
+   * @route PUT /api/orders/:id
+   */
+  updateReservation: async (req: Request, res: Response) => {
+    try {
+      const orderId = req.params.id;
+      const { seatNumbers } = req.body;
+
+      if (!seatNumbers || !Array.isArray(seatNumbers)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid request data. Please provide seatNumbers as an array.'
+        });
+      }
+
+      if (seatNumbers.length > 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot reserve more than 4 seats at a time.'
+        });
+      }
+
+      // Find the existing order
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found.'
+        });
+      }
+
+      if (order.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: `Order cannot be updated because it is ${order.status}`
+        });
+      }      // Check if order is expired
+      if (order.expiresAt < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Order has expired and cannot be updated'
+        });
+      }
+
+      // Get the current screening
+      const screening = await Screening.findById(order.screeningId);
+      if (!screening) {
+        return res.status(404).json({
+          success: false,
+          message: 'Screening not found.'
+        });
+      }
+
+      try {
+        // Get the current seats associated with this order
+        const currentOrderSeats = screening.seats.filter(
+          seat => seat.orderId?.toString() === orderId
+        );
+        
+        // Get numbers of all occupied seats not belonging to this order
+        const occupiedSeats = screening.seats
+          .filter(seat => seat.status !== 'available' && 
+                        (!seat.orderId || seat.orderId.toString() !== orderId))
+          .map(seat => seat.number);
+        
+        // Check if any of the requested seats are already occupied by someone else
+        const unavailableSeats = seatNumbers.filter(seatNumber => 
+          occupiedSeats.includes(seatNumber)
+        );
+
+        if (unavailableSeats.length > 0) {
+          throw new Error(`Seats ${unavailableSeats.join(', ')} are not available.`);
+        }
+        
+        // Get seats to release (seats that were in the order but are no longer selected)
+        const seatsToRelease = currentOrderSeats
+          .filter(seat => !seatNumbers.includes(seat.number))
+          .map(seat => seat.number);
+          
+        // Get new seats to reserve (seats that weren't in the order but are now selected)
+        const seatsToReserve = seatNumbers.filter(
+          seatNumber => !order.seatNumbers.includes(seatNumber)
+        );
+        
+        // Release seats that are no longer selected
+        if (seatsToRelease.length > 0) {
+          await Screening.updateOne(
+            { _id: order.screeningId },
+            {
+              $set: {
+                'seats.$[elem].status': 'available',
+                'seats.$[elem].reservedUntil': null,
+                'seats.$[elem].orderId': null
+              }
+            },
+            {
+              arrayFilters: [{ 'elem.number': { $in: seatsToRelease } }],
+              multi: true
+            }
+          );
+        }
+        
+        // Reserve new seats
+        if (seatsToReserve.length > 0) {
+          await Screening.updateOne(
+            { _id: order.screeningId },
+            {
+              $set: {
+                'seats.$[elem].status': 'reserved',
+                'seats.$[elem].reservedUntil': order.expiresAt,
+                'seats.$[elem].orderId': order._id
+              }
+            },
+            {
+              arrayFilters: [{ 'elem.number': { $in: seatsToReserve } }],
+              multi: true
+            }
+          );
+        }
+        
+        // Update the order with the new seat numbers
+        await Order.updateOne(
+          { _id: orderId },
+          { $set: { seatNumbers } }
+        );
+        
+        // If all seats were removed, expire the order
+        if (seatNumbers.length === 0) {
+          await Order.updateOne(
+            { _id: orderId },
+            { $set: { status: 'expired' } }
+          );
+        }
+        
+        // Notify connected clients about the seat update
+        socketService.emitSeatsUpdated(order.screeningId.toString());
+        
+        res.json({
+          success: true,
+          message: 'Reservation updated successfully.',
+          data: {
+            orderId,
+            seatNumbers
+          }
+        });
+        
+      } catch (error) {
+        // Handle errors
+        console.error('Error updating reservation:', error);
+        res.status(400).json({
+          success: false,
+          message: error instanceof Error ? error.message : 'Failed to update reservation',
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update reservation',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  },
 };
 
 export default orderController;

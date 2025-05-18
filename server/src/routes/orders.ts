@@ -8,6 +8,11 @@ router.post('/', (req: Request, res: Response) => {
   orderController.createReservation(req, res);
 });
 
+// Update an existing reservation
+router.put('/:id', (req: Request, res: Response) => {
+  orderController.updateReservation(req, res);
+});
+
 // Get order by ID
 router.get('/:id', (req: Request, res: Response) => {
   orderController.getOrderById(req, res);

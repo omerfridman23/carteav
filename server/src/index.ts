@@ -2,8 +2,11 @@ import express, { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
 import routes from './routes';
 import seedScreenings from './seeders/screeningSeeder';
+import socketService from './services/socketService';
+import cronService from './services/cronService';
 
 // Load environment variables
 dotenv.config();
@@ -11,6 +14,9 @@ dotenv.config();
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Create HTTP server using Express app
+const server = http.createServer(app);
 
 // Middleware
 app.use(cors());
@@ -45,8 +51,36 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Initialize Socket.io service
+  socketService.initialize(server);
+  
+  // Initialize Cron service to handle order expiration
+  cronService.initialize();
 });
+
+// Graceful shutdown
+const gracefulShutdown = () => {
+  console.log('\nStarting graceful shutdown...');
+  
+  // Stop cron jobs
+  cronService.stop();
+  
+  // Close server
+  server.close(() => {
+    console.log('HTTP server closed');
+      // Close database connection
+    mongoose.connection.close().then(() => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+};
+
+// Handle termination signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 export default app;

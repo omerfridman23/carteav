@@ -7,13 +7,15 @@ interface SeatsGridProps {
   occupiedSeats: number[];
   selectedSeats: number[];
   onSeatClick: (seat: number) => void;
+  reservedByMe?: boolean;
 }
 
 const SeatsGrid: React.FC<SeatsGridProps> = ({ 
   totalSeats, 
   occupiedSeats, 
   selectedSeats, 
-  onSeatClick 
+  onSeatClick,
+  reservedByMe = false 
 }) => {
   return (
     <div className="seats-container">
@@ -25,8 +27,9 @@ const SeatsGrid: React.FC<SeatsGridProps> = ({
           <Seat
             key={seat}
             number={seat}
-            isOccupied={occupiedSeats.includes(seat)}
-            isSelected={selectedSeats.includes(seat)}
+            isOccupied={occupiedSeats.includes(seat) && !selectedSeats.includes(seat)}
+            isSelected={!reservedByMe && selectedSeats.includes(seat)}
+            isReservedByMe={reservedByMe && selectedSeats.includes(seat)}
             onClick={onSeatClick}
           />
         ))}
