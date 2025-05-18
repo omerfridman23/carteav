@@ -4,22 +4,24 @@ import { Screening } from '../models/Screening';
 /**
  * Seed the screenings collection with sample data
  */
-export const seedScreenings = async (): Promise<void> => {
-  try {
+export const seedScreenings = async (): Promise<void> => {  try {
     // Check if screenings already exist
     const count = await Screening.countDocuments();
     
     if (count > 0) {
-      console.log('Screenings collection already has data, skipping seeding');
-      return;
+      console.log('Dropping existing screenings collection and reseeding...');
+      await Screening.deleteMany({});
     }
-
+    
     // Movie titles for screenings
     const movies = [
       'The Dark Knight',
       'Inception',
       'The Matrix',
-      'Interstellar'
+      'Interstellar',
+      'Pulp Fiction',
+      'The Godfather',
+      'Forrest Gump'
     ];
 
     // Create today's date at midnight
@@ -29,17 +31,23 @@ export const seedScreenings = async (): Promise<void> => {
     // Generate screenings for the next 7 days
     const screenings = [];
     
+    // Define screening times with no overlaps 
+    // Only 3 screenings per day at different times
+    const timeSlots = [
+      { hour: 10, minute: 30 }, // 10:30 AM
+      { hour: 14, minute: 15 }, // 2:15 PM
+      { hour: 19, minute: 0 }   // 7:00 PM
+    ];
+    
     for (let day = 0; day < 7; day++) {
       const date = new Date(today);
       date.setDate(today.getDate() + day);
       
-      // Create 4 screenings per day at different times
-      const times = [10, 13, 16, 19]; // Hours: 10 AM, 1 PM, 4 PM, 7 PM
-      
-      for (let i = 0; i < times.length; i++) {
-        const movieIndex = (day + i) % movies.length;
+      // Assign a different movie to each time slot
+      for (let i = 0; i < timeSlots.length; i++) {
+        const movieIndex = (day * timeSlots.length + i) % movies.length;
         const screeningTime = new Date(date);
-        screeningTime.setHours(times[i], 0, 0, 0);
+        screeningTime.setHours(timeSlots[i].hour, timeSlots[i].minute, 0, 0);
         
         screenings.push({
           movieTitle: movies[movieIndex],

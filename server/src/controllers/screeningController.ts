@@ -2,14 +2,22 @@ import { Request, Response } from 'express';
 import { Screening } from '../models/Screening';
 
 /**
+ * Format date to display only hours and minutes (HH:MM)
+ */
+const formatTime = (date: Date): string => {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+/**
  * Screening controller for handling screening-related requests
  */
 const screeningController = {
   /**
    * Get all screenings
    * @route GET /api/screenings
-   */
-  getAllScreenings: async (req: Request, res: Response) => {
+   */  getAllScreenings: async (req: Request, res: Response) => {
     try {
       const screenings = await Screening.find().sort({ time: 1 });
       res.json({
@@ -17,7 +25,7 @@ const screeningController = {
         data: screenings.map(screening => ({
           id: screening._id,
           movieTitle: screening.movieTitle,
-          time: screening.time
+          time: formatTime(screening.time)
         }))
       });
     } catch (error) {
@@ -43,14 +51,12 @@ const screeningController = {
           success: false,
           message: 'Screening not found'
         });
-      }
-
-      res.json({
+      }      res.json({
         success: true,
         data: {
           id: screening._id,
           movieTitle: screening.movieTitle,
-          time: screening.time
+          time: formatTime(screening.time)
         }
       });
     } catch (error) {
