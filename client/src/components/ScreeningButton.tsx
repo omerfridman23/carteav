@@ -1,5 +1,5 @@
 import React from 'react';
-import './ScreeningButton.css';
+import '../styles/components.css';
 
 interface ScreeningButtonProps {
   id: string;

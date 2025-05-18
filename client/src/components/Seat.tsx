@@ -1,5 +1,5 @@
 import React from 'react';
-import './Seat.css';
+import '../styles/components.css';
 
 interface SeatProps {
   number: number;

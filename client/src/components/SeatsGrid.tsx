@@ -1,6 +1,6 @@
 import React from 'react';
 import Seat from './Seat';
-import './SeatsGrid.css';
+import '../styles/components.css';
 
 interface SeatsGridProps {
   totalSeats: number;
