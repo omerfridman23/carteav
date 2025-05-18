@@ -71,6 +71,14 @@ function App() {
       
       if (response.success) {
         setReservationStatus('success');
+        
+        // Store reservation data (in a real app, you might want to save this in state)
+        const orderId = response.orderId;
+        const expiryTime = response.expiresAt ? new Date(response.expiresAt) : null;
+        
+        console.log(`Order ${orderId} created successfully`);
+        console.log(`Seats will be reserved until ${expiryTime?.toLocaleTimeString()}`);
+        
         // Add small delay to show success message before closing
         setTimeout(() => {
           setShowModal(false);

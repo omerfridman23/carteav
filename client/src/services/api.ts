@@ -77,18 +77,34 @@ export const fetchOccupiedSeats = async (screeningId: string): Promise<number[]>
 
 /**
  * Reserve seats for a screening
- * Note: This is a placeholder that would be implemented in later stages
  */
 export const reserveSeats = async (
   screeningId: string,
   seatNumbers: number[]
-): Promise<{ success: boolean }> => {
+): Promise<{ success: boolean; orderId?: string; expiresAt?: string }> => {
   try {
-    // This would be implemented in a real API
-    console.log(`Reserving seats ${seatNumbers.join(', ')} for screening ${screeningId}`);
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        screeningId,
+        seatNumbers,
+      }),
+    });
+
+    const data = await response.json();
     
-    // Simulate successful reservation
-    return { success: true };
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error ${response.status}`);
+    }
+    
+    return { 
+      success: data.success,
+      orderId: data.data?.orderId,
+      expiresAt: data.data?.expiresAt
+    };
   } catch (error) {
     console.error('Error reserving seats:', error);
     throw error;
