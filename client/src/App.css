@@ -5,6 +5,13 @@
   text-align: center;
 }
 
+.App {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -67,4 +74,90 @@
 .error {
   color: #e53935;
   font-weight: bold;
+}
+
+h1 {
+  margin-bottom: 24px;
+  color: #333;
+}
+
+.screening-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.screening-list li {
+  margin: 0 8px;
+}
+
+.reserve-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background-color 0.2s;
+}
+
+.reserve-button:hover {
+  background-color: #43a047;
+}
+
+.close-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 16px;
+  margin-left: 8px;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #e53935;
+}
+
+.seat-legend {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.legend-available {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+}
+
+.legend-selected {
+  background-color: #4caf50;
+  border: 1px solid #43a047;
+}
+
+.legend-occupied {
+  background-color: #e0e0e0;
+  border: 1px solid #ccc;
+  opacity: 0.7;
 }

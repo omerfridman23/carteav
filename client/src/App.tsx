@@ -1,91 +1,129 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import './App.css';
+import ScreeningButton from './components/ScreeningButton';
+import Modal from './components/Modal';
+import SeatsGrid from './components/SeatsGrid';
 
-interface TestData {
-  message: string;
-  timestamp: string;
-  data: {
-    items: Array<{
-      _id: string;
-      name: string;
-      value: number;
-    }>;
-    count: number;
-  };
-}
+const screenings = [
+  { id: '1', time: '10:00 AM' },
+  { id: '2', time: '1:00 PM' },
+  { id: '3', time: '4:00 PM' },
+  { id: '4', time: '7:00 PM' },
+];
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [testData, setTestData] = useState<TestData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [selectedScreening, setSelectedScreening] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  // Dummy occupied seats; replace with real fetch in production
+  const occupiedSeats = [5, 12, 18, 25, 37, 42];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get('http://localhost:5000/api/test');
-        setTestData(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to fetch data from server');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleScreeningSelect = (id: string) => {
+    setSelectedScreening(id);
+    setShowModal(true);
+    setSelectedSeats([]);
+    // In a real app, would fetch occupied seats for this screening
+    // fetchOccupiedSeats(id).then(seats => setOccupiedSeats(seats));
+  };
 
-    fetchData();
-  }, []);
+  const handleSeatClick = (seat: number) => {
+    if (occupiedSeats.includes(seat)) return;
+    setSelectedSeats(prev =>
+      prev.includes(seat)
+        ? prev.filter(s => s !== seat)
+        : prev.length < 4
+        ? [...prev, seat]
+        : prev
+    );
+  };
+
+  const handleReserve = () => {
+    // TODO: send reservation to backend
+    // In a real app, would call something like:
+    // reserveSeats(selectedScreening, selectedSeats).then(response => {
+    //   if (response.success) {
+    //     alert('Seats reserved successfully!');
+    //     setShowModal(false);
+    //   }
+    // });
+    alert(`Reserving seats: ${selectedSeats.join(', ')}`);
+    setShowModal(false);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+  };
+
+  const screeningTitle = screenings.find(s => s.id === selectedScreening)?.time
+    ? `Screening at ${screenings.find(s => s.id === selectedScreening)?.time}`
+    : 'Select Seats';
+
+  const modalFooter = (
+    <>
+      {selectedSeats.length > 0 && (
+        <button className="reserve-button" onClick={handleReserve}>
+          Reserve {selectedSeats.length} Seat{selectedSeats.length > 1 ? 's' : ''}
+        </button>
+      )}
+      <button className="close-button" onClick={closeModal}>
+        Close
+      </button>
+    </>
+  );
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      
-      <div className="api-data">
-        <h2>Server Data</h2>
-        {loading && <p>Loading data...</p>}
-        {error && <p className="error">{error}</p>}
-        {testData && (
-          <div>
-            <p><strong>Message:</strong> {testData.message}</p>
-            <p><strong>Timestamp:</strong> {testData.timestamp}</p>
-            <h3>Items:</h3>
-            <ul>
-              {testData.data.items.map(item => (
-                <li key={item._id}>
-                  {item.name}: {item.value}
-                </li>
-              ))}
-            </ul>
+    <div className="App">
+      <h1>Cinema Ticket Booking</h1>
+      <h2>Select a Screening Time</h2>
+      <ul className="screening-list">
+        {screenings.map(s => (
+          <li key={s.id}>
+            <ScreeningButton 
+              id={s.id} 
+              time={s.time} 
+              onSelect={handleScreeningSelect} 
+            />
+          </li>
+        ))}
+      </ul>
+
+      <Modal
+        isOpen={showModal}
+        onClose={closeModal}
+        title={screeningTitle}
+        footer={modalFooter}
+      >
+        <SeatsGrid
+          totalSeats={50}
+          occupiedSeats={occupiedSeats}
+          selectedSeats={selectedSeats}
+          onSeatClick={handleSeatClick}
+        />
+        
+        <div className="seat-legend">
+          <div className="legend-item">
+            <div className="legend-color legend-available"></div>
+            <span>Available</span>
           </div>
+          <div className="legend-item">
+            <div className="legend-color legend-selected"></div>
+            <span>Selected</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color legend-occupied"></div>
+            <span>Occupied</span>
+          </div>
+        </div>
+        
+        {selectedSeats.length > 0 && (
+          <p>Selected seats: {selectedSeats.sort((a, b) => a - b).join(', ')}</p>
         )}
-      </div>
-      
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+        {selectedSeats.length === 4 && (
+          <p>Maximum 4 seats can be selected at once.</p>
+        )}
+      </Modal>
+    </div>
+  );
 }
 
-export default App
+export default App;
