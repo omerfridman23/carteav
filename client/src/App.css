@@ -161,3 +161,37 @@ h1 {
   border: 1px solid #ccc;
   opacity: 0.7;
 }
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 16px 0;
+  border: 1px solid #ef9a9a;
+}
+
+.reservation-status {
+  padding: 8px 16px;
+  border-radius: 4px;
+  margin: 8px 0;
+  font-weight: 500;
+}
+
+.reservation-status.pending {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
+.reservation-status.success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.reservation-status.error {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}

@@ -1,29 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import ScreeningButton from './components/ScreeningButton';
 import Modal from './components/Modal';
 import SeatsGrid from './components/SeatsGrid';
-
-const screenings = [
-  { id: '1', time: '10:00 AM' },
-  { id: '2', time: '1:00 PM' },
-  { id: '3', time: '4:00 PM' },
-  { id: '4', time: '7:00 PM' },
-];
+import { fetchScreenings, fetchOccupiedSeats, reserveSeats } from './services/api';
+import type { Screening } from './services/api';
 
 function App() {
+  const [screenings, setScreenings] = useState<Screening[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedScreening, setSelectedScreening] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-  // Dummy occupied seats; replace with real fetch in production
-  const occupiedSeats = [5, 12, 18, 25, 37, 42];
+  const [occupiedSeats, setOccupiedSeats] = useState<number[]>([]);
+  const [reservationStatus, setReservationStatus] = useState<string | null>(null);
 
-  const handleScreeningSelect = (id: string) => {
+  // Fetch screenings when component mounts
+  useEffect(() => {
+    const getScreenings = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchScreenings();
+        setScreenings(data);
+        setError(null);
+      } catch (error) {
+        console.error('Failed to fetch screenings:', error);
+        setError('Failed to load screenings. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getScreenings();
+  }, []);
+
+  const handleScreeningSelect = async (id: string) => {
     setSelectedScreening(id);
     setShowModal(true);
     setSelectedSeats([]);
-    // In a real app, would fetch occupied seats for this screening
-    // fetchOccupiedSeats(id).then(seats => setOccupiedSeats(seats));
+    setReservationStatus(null);
+    
+    try {
+      // Fetch occupied seats for this screening
+      const seats = await fetchOccupiedSeats(id);
+      setOccupiedSeats(seats);
+    } catch (error) {
+      console.error('Error fetching occupied seats:', error);
+    }
   };
 
   const handleSeatClick = (seat: number) => {
@@ -37,30 +61,57 @@ function App() {
     );
   };
 
-  const handleReserve = () => {
-    // TODO: send reservation to backend
-    // In a real app, would call something like:
-    // reserveSeats(selectedScreening, selectedSeats).then(response => {
-    //   if (response.success) {
-    //     alert('Seats reserved successfully!');
-    //     setShowModal(false);
-    //   }
-    // });
-    alert(`Reserving seats: ${selectedSeats.join(', ')}`);
-    setShowModal(false);
+  const handleReserve = async () => {
+    if (!selectedScreening || selectedSeats.length === 0) return;
+    
+    try {
+      setReservationStatus('pending');
+      // Call API to reserve seats
+      const response = await reserveSeats(selectedScreening, selectedSeats);
+      
+      if (response.success) {
+        setReservationStatus('success');
+        // Add small delay to show success message before closing
+        setTimeout(() => {
+          setShowModal(false);
+          setReservationStatus(null);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Failed to reserve seats:', error);
+      setReservationStatus('error');
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
+    setReservationStatus(null);
   };
 
-  const screeningTitle = screenings.find(s => s.id === selectedScreening)?.time
-    ? `Screening at ${screenings.find(s => s.id === selectedScreening)?.time}`
-    : 'Select Seats';
+  const getScreeningTitle = () => {
+    const screening = screenings.find(s => s.id === selectedScreening);
+    if (screening) {
+      return `${screening.movieTitle} at ${screening.time}`;
+    }
+    return 'Select Seats';
+  };
+
+  const renderReservationStatus = () => {
+    if (!reservationStatus) return null;
+    
+    if (reservationStatus === 'pending') {
+      return <p className="reservation-status pending">Processing your reservation...</p>;
+    } else if (reservationStatus === 'success') {
+      return <p className="reservation-status success">Seats reserved successfully!</p>;
+    } else if (reservationStatus === 'error') {
+      return <p className="reservation-status error">Failed to reserve seats. Please try again.</p>;
+    }
+  };
 
   const modalFooter = (
     <>
-      {selectedSeats.length > 0 && (
+      {renderReservationStatus()}
+      {selectedSeats.length > 0 && !reservationStatus && (
         <button className="reserve-button" onClick={handleReserve}>
           Reserve {selectedSeats.length} Seat{selectedSeats.length > 1 ? 's' : ''}
         </button>
@@ -74,23 +125,33 @@ function App() {
   return (
     <div className="App">
       <h1>Cinema Ticket Booking</h1>
-      <h2>Select a Screening Time</h2>
-      <ul className="screening-list">
-        {screenings.map(s => (
-          <li key={s.id}>
-            <ScreeningButton 
-              id={s.id} 
-              time={s.time} 
-              onSelect={handleScreeningSelect} 
-            />
-          </li>
-        ))}
-      </ul>
+      
+      {error && <div className="error-message">{error}</div>}
+      
+      {loading ? (
+        <p>Loading screenings...</p>
+      ) : (
+        <>
+          <h2>Select a Screening Time</h2>
+          <ul className="screening-list">
+            {screenings.map(s => (
+              <li key={s.id}>
+                <ScreeningButton 
+                  id={s.id} 
+                  time={s.time} 
+                  onSelect={handleScreeningSelect} 
+                  title={s.movieTitle}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <Modal
         isOpen={showModal}
         onClose={closeModal}
-        title={screeningTitle}
+        title={getScreeningTitle()}
         footer={modalFooter}
       >
         <SeatsGrid

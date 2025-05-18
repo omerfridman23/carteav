@@ -1,25 +1,12 @@
 import express, { Request, Response } from 'express';
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import routes from './routes';
+import seedScreenings from './seeders/screeningSeeder';
 
 // Load environment variables
 dotenv.config();
-
-// Define Test Item interface
-interface ITestItem extends Document {
-  name: string;
-  value: number;
-}
-
-// Create schema for test collection
-const TestItemSchema = new Schema<ITestItem>({
-  name: { type: String, required: true },
-  value: { type: Number, required: true }
-});
-
-// Create model
-const TestItem = mongoose.model<ITestItem>('TestItem', TestItemSchema, 'test');
 
 // Create Express app
 const app = express();
@@ -34,30 +21,27 @@ const MONGO_URI = process.env.MONGO_URI || "";
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => console.log('MongoDB connected successfully'))
+  .then(async () => {
+    console.log('MongoDB connected successfully');
+    
+    // Seed the database with initial data
+    try {
+      await seedScreenings();
+    } catch (error) {
+      console.error('Error seeding database:', error);
+    }
+  })
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Test route
-app.get('/api/test', async (req: Request, res: Response) => {
-  try {
-    // Find all items in the test collection
-    const items = await TestItem.find().exec();
-    
-    res.json({
-      message: 'API is working correctly!',
-      timestamp: new Date().toISOString(),
-      data: {
-        items,
-        count: items.length
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch data from database',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
+// API Routes
+app.use('/api', routes);
+
+// Health check route
+app.get('/health', (req: Request, res: Response) => {
+  res.json({
+    message: 'API is working correctly!',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start the server

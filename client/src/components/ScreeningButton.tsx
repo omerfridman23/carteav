@@ -5,15 +5,16 @@ interface ScreeningButtonProps {
   id: string;
   time: string;
   onSelect: (id: string) => void;
+  title?: string;
 }
 
-const ScreeningButton: React.FC<ScreeningButtonProps> = ({ id, time, onSelect }) => {
+const ScreeningButton: React.FC<ScreeningButtonProps> = ({ id, time, onSelect, title }) => {
   return (
     <button 
       className="screening-button"
       onClick={() => onSelect(id)}
     >
-      {time}
+      {title ? `${title} - ${time}` : time}
     </button>
   );
 };
